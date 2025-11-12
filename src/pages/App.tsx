@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,15 +9,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Globe, MapPin, DollarSign, Shield, Users, ArrowLeft, 
-  Plane, Calendar, TrendingUp, AlertTriangle, Check, Camera, LogOut, User
+  Plane, Calendar, TrendingUp, AlertTriangle, Check, Camera, LogOut, User, Loader2
 } from "lucide-react";
 
 const AppPage = () => {
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [showPlanner, setShowPlanner] = useState(false);
+  const [destination, setDestination] = useState("");
+  const [duration, setDuration] = useState("");
+  const [budget, setBudget] = useState("");
+  const [interests, setInterests] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedItinerary, setGeneratedItinerary] = useState<string | null>(null);
   const { user, loading, signOut } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -206,19 +214,35 @@ const AppPage = () => {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="destination">Destination</Label>
-                    <Input id="destination" placeholder="e.g., Tokyo, Japan" />
+                    <Input 
+                      id="destination" 
+                      placeholder="e.g., Tokyo, Japan"
+                      value={destination}
+                      onChange={(e) => setDestination(e.target.value)}
+                      disabled={isGenerating}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="duration">Duration (days)</Label>
-                    <Input id="duration" type="number" placeholder="7" />
+                    <Input 
+                      id="duration" 
+                      type="number" 
+                      placeholder="7"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      disabled={isGenerating}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="budget">Budget (USD)</Label>
-                    <Input id="budget" type="number" placeholder="2000" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="start-date">Start Date</Label>
-                    <Input id="start-date" type="date" />
+                    <Input 
+                      id="budget" 
+                      type="number" 
+                      placeholder="2000"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                      disabled={isGenerating}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -227,54 +251,109 @@ const AppPage = () => {
                     id="interests" 
                     placeholder="e.g., temples, street food, photography, nightlife..."
                     rows={3}
+                    value={interests}
+                    onChange={(e) => setInterests(e.target.value)}
+                    disabled={isGenerating}
                   />
                 </div>
-                <Button variant="hero" size="lg" className="w-full" onClick={() => setShowPlanner(true)}>
-                  Generate AI Itinerary
+                <Button 
+                  variant="hero" 
+                  size="lg" 
+                  className="w-full" 
+                  onClick={async () => {
+                    if (!destination || !duration || !budget || !interests) {
+                      toast({
+                        title: "Missing information",
+                        description: "Please fill in all fields to generate an itinerary.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    setIsGenerating(true);
+                    setGeneratedItinerary(null);
+
+                    try {
+                      const { data, error } = await supabase.functions.invoke("generate-trip", {
+                        body: { 
+                          destination, 
+                          duration, 
+                          budget: `$${budget}`, 
+                          interests 
+                        },
+                      });
+
+                      if (error) throw error;
+
+                      setGeneratedItinerary(data.itinerary);
+                      toast({
+                        title: "Itinerary generated!",
+                        description: "Your personalized trip plan is ready.",
+                      });
+                    } catch (error: any) {
+                      console.error("Error generating itinerary:", error);
+                      toast({
+                        title: "Failed to generate itinerary",
+                        description: error.message || "Please try again later.",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsGenerating(false);
+                    }
+                  }}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Generating Your Perfect Trip...
+                    </>
+                  ) : (
+                    "Generate AI Itinerary"
+                  )}
                 </Button>
 
-                {showPlanner && (
+                {generatedItinerary && (
                   <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xl font-semibold">Your AI-Generated Itinerary</h3>
-                      <Badge className="bg-secondary">7 Days in Tokyo</Badge>
+                      <Badge className="bg-secondary">
+                        {duration} {parseInt(duration) === 1 ? "Day" : "Days"} in {destination}
+                      </Badge>
                     </div>
-                    {[1, 2, 3].map((day) => (
-                      <Card key={day} className="border-l-4 border-l-primary">
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">Day {day}</CardTitle>
-                            <Badge variant="outline">$280 est.</Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-start gap-3">
-                            <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                            <div>
-                              <div className="font-semibold">Morning: Senso-ji Temple</div>
-                              <p className="text-sm text-muted-foreground">Explore Tokyo's oldest temple in Asakusa. Arrive early to avoid crowds.</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                            <div>
-                              <div className="font-semibold">Afternoon: Tsukiji Outer Market</div>
-                              <p className="text-sm text-muted-foreground">Fresh sushi and street food. Budget: $50</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <Calendar className="h-5 w-5 text-primary mt-0.5" />
-                            <div>
-                              <div className="font-semibold">Evening: Shibuya Crossing</div>
-                              <p className="text-sm text-muted-foreground">Experience the world's busiest intersection and explore Shibuya nightlife.</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    <Card className="border-l-4 border-l-primary">
+                      <CardContent className="pt-6">
+                        <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+                          {generatedItinerary}
+                        </div>
+                      </CardContent>
+                    </Card>
                     <div className="flex gap-3">
-                      <Button className="flex-1">Export to PDF</Button>
-                      <Button variant="outline" className="flex-1">Adjust Itinerary</Button>
+                      <Button 
+                        className="flex-1"
+                        onClick={() => {
+                          setDestination("");
+                          setDuration("");
+                          setBudget("");
+                          setInterests("");
+                          setGeneratedItinerary(null);
+                        }}
+                      >
+                        Create New Trip
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedItinerary);
+                          toast({
+                            title: "Copied!",
+                            description: "Itinerary copied to clipboard.",
+                          });
+                        }}
+                      >
+                        Copy to Clipboard
+                      </Button>
                     </div>
                   </div>
                 )}
