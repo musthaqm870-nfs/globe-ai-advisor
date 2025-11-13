@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import Map from "@/components/Map";
 import { 
   Globe, MapPin, DollarSign, Shield, Users, ArrowLeft, 
-  Plane, Calendar, TrendingUp, AlertTriangle, Check, Camera, LogOut, User, Loader2, Search
+  Plane, Calendar, TrendingUp, AlertTriangle, Check, Camera, LogOut, User, Loader2, Search, Map as MapIcon
 } from "lucide-react";
 
 interface SafetyData {
@@ -215,10 +216,14 @@ const AppPage = () => {
       {/* Main Dashboard */}
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="planner" className="space-y-8">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-5">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-6">
             <TabsTrigger value="planner">
               <MapPin className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Planner</span>
+            </TabsTrigger>
+            <TabsTrigger value="map">
+              <MapIcon className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Map</span>
             </TabsTrigger>
             <TabsTrigger value="expenses">
               <DollarSign className="h-4 w-4 mr-2" />
@@ -397,6 +402,57 @@ const AppPage = () => {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Interactive Map */}
+          <TabsContent value="map" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapIcon className="h-6 w-6 text-primary" />
+                  Interactive Travel Map
+                </CardTitle>
+                <CardDescription>
+                  Visualize destinations, itinerary stops, and safety zones on an interactive map
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[600px] rounded-lg overflow-hidden border">
+                  <Map 
+                    destinations={[
+                      { name: "Tokyo, Japan", coordinates: [139.6917, 35.6895] },
+                      { name: "Paris, France", coordinates: [2.3522, 48.8566] },
+                      { name: "New York, USA", coordinates: [-74.0060, 40.7128] }
+                    ]}
+                    safetyZones={[
+                      { coordinates: [139.6917, 35.6895], level: "safe" },
+                      { coordinates: [2.3522, 48.8566], level: "moderate" }
+                    ]}
+                  />
+                </div>
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2">Map Legend</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full border-2 border-white" style={{ backgroundColor: 'hsl(var(--primary))' }}></div>
+                      <span>Destination markers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white opacity-70"></div>
+                      <span>Safe zones</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-yellow-500 border-2 border-white opacity-70"></div>
+                      <span>Moderate risk zones</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white opacity-70"></div>
+                      <span>High risk zones</span>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
