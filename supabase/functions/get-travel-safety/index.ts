@@ -33,12 +33,12 @@ serve(async (req) => {
     console.log(`Fetching safety data for country: ${countryCode}`);
 
     // Fetch travel advisory data from Travel-Advisory.info API
-    // Using HTTP instead of HTTPS to avoid SSL certificate validation issues in Deno
     const response = await fetch(
-      `http://www.travel-advisory.info/api?countrycode=${countryCode.toUpperCase()}`
+      `https://www.travel-advisory.info/api?countrycode=${countryCode.toUpperCase()}`
     );
 
     if (!response.ok) {
+      console.error(`API error: Status ${response.status}`);
       throw new Error(`API returned status ${response.status}`);
     }
 
